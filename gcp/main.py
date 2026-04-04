@@ -16,7 +16,7 @@ BUCKET_NAME = "crop-care-ai-models" # Here you need to put the name of your GCP 
 def download_blob(bucket_name, source_blob_name, destination_file_name):
     """Downloads a blob from the bucket."""
     storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name)
+    bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(source_blob_name)
 
     blob.download_to_filename(destination_file_name)
@@ -29,10 +29,10 @@ def predict(request):
     if model is None:
         download_blob(
             BUCKET_NAME,
-            "models/crop-care-ai.h5",
-            "/tmp/crop-care-ai.h5",
+            "models/crop-care-ai.keras",
+            "/tmp/crop-care-ai.keras",
         )
-        model = tf.keras.models.load_model("/tmp/crop-care-ai.h5")
+        model = tf.keras.models.load_model("/tmp/crop-care-ai.keras")
 
     image = request.files["file"]
 

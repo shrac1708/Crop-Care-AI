@@ -1,6 +1,6 @@
 matplotlib
-numpy
-notebook
-tensorflow-addons
-tensorflow-model-optimization
-tensorflow==2.5
+numpy>=2.0
+notebook>=7.0
+tensorflow==2.19.0
+# tensorflow-model-optimization — install separately only when running TF Lite conversion notebooks
+# pip install tensorflow-model-optimization>=0.8
