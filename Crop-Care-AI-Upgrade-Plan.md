@@ -9,8 +9,8 @@ This document tracks the full upgrade of the Crop-Care-AI project across four ph
 | 1 | Python / TensorFlow / Keras / Notebooks | ✅ Complete |
 | 2A | Web Frontend (React + MUI) | ✅ Complete |
 | 2B | Mobile App (React Native) | ✅ Complete |
-| 3 | Android Native Build Layer | ⬜ Not Started |
-| 4 | GCP Deployment | ⬜ Not Started |
+| 3 | Android Native Build Layer | ✅ Complete |
+| 4 | GCP Deployment | ⏸ On Hold |
 
 ---
 
@@ -233,28 +233,106 @@ This document tracks the full upgrade of the Crop-Care-AI project across four ph
 
 ---
 
-## Phase 3 — Android Native Build Layer ⬜
+## Phase 3 — Android Native Build Layer ✅
 
-> Detailed plan TBD after Phase 2B is complete.
+### What Was Done
 
-Key areas:
-- Gradle version alignment
-- Android SDK / build tools versions
-- ProGuard / R8 rules for TFLite if using on-device inference
-- Signing config for release build
+#### Step 3-1 — `settings.gradle` + `build.gradle` (RN 0.73 autolink)
+- Rewrote `settings.gradle` to match the RN 0.73.9 template format: `applyNativeModulesSettingsGradle(settings)` for autolink, plain top-level `includeBuild` for the gradle plugin
+- Removed the incorrect RN 0.74-style `pluginManagement` / `com.facebook.react.settings` block (that plugin does not exist in the 0.73.x gradle plugin)
+- Restored `allprojects { repositories { ... } }` in `build.gradle` with `react-native/android` maven repo, `jsc-android/dist`, and JitPack
+- Added `apply plugin: "com.facebook.react.rootproject"` to `build.gradle`
+- Pinned: AGP `8.1.4`, Kotlin `1.9.22`, NDK `26.1.10909125`, Gradle `8.3`
+
+#### Step 3-2 — `gradle.properties`
+- Enabled JVM args: `-Xmx4096m -XX:MaxMetaspaceSize=512m`
+- Removed `FLIPPER_VERSION` (Flipper removed from RN 0.73)
+- Added `newArchEnabled=false`
+- Added `hermesEnabled=true`
+
+#### Step 3-3 — `android/app/build.gradle` (AGP 8 cleanup)
+- Removed large stale RN 0.64 comment block (`project.ext.react = [...]` docs, ~80 lines)
+- Removed `aaptOptions { noCompress 'tflite' }` (no longer needed)
+- Added `buildFeatures { buildConfig = true }` (required by AGP 8 for `react-native-config`)
+- Added `def jscFlavor` and conditional `hermes-android` / `jsc` dependency
+- Added `applyNativeModulesAppBuildGradle(project)` at the bottom — this is what generates `PackageList.java` before compile
+
+#### Step 3-4 — `AndroidManifest.xml`
+- Removed `package="com.crop.care.ai"` attribute from `<manifest>` (now declared via `namespace` in build.gradle per AGP 7+)
+- Replaced `WRITE_EXTERNAL_STORAGE` + `READ_EXTERNAL_STORAGE` with `READ_MEDIA_IMAGES` (Android 13+ / API 33+) and kept `READ_EXTERNAL_STORAGE` capped at `android:maxSdkVersion="32"` for older devices
+- Added `android:exported="true"` to the launcher `<activity>` (required since API 31)
+
+#### Step 3-5 — `proguard-rules.pro`
+- Added keep rules for: `com.facebook.react`, `com.facebook.hermes`, `com.facebook.jni`, `com.facebook.soloader`
+- Added keep rules for native methods and `*Annotation*` attributes
+- Added `react-native-config` BuildConfig keep rule
+- Added OkHttp `dontwarn` suppressions
+
+#### Step 3-6 — `MainApplication.java` + `MainActivity.java`
+- `MainApplication.java`: migrated from `ReactNativeHost` → `DefaultReactNativeHost`; added `isNewArchEnabled()` and `isHermesEnabled()` overrides; removed `initializeFlipper()` method, `Context` import, `ReactInstanceManager` import, and all Flipper reflection code
+- `MainActivity.java`: added `createReactActivityDelegate()` returning `DefaultReactActivityDelegate` (required by RN 0.73 for proper new-arch and Fabric support)
+- Deleted `android/app/src/debug/java/.../ReactNativeFlipper.java` (Flipper entirely removed in RN 0.73)
+
+### Key Files Modified
+
+- `mobile-app/android/settings.gradle`
+- `mobile-app/android/build.gradle`
+- `mobile-app/android/app/build.gradle`
+- `mobile-app/android/gradle.properties`
+- `mobile-app/android/gradle/wrapper/gradle-wrapper.properties`
+- `mobile-app/android/app/src/main/AndroidManifest.xml`
+- `mobile-app/android/app/proguard-rules.pro`
+- `mobile-app/android/app/src/main/java/com/crop/care/ai/MainApplication.java`
+- `mobile-app/android/app/src/main/java/com/crop/care/ai/MainActivity.java`
+- `mobile-app/android/app/src/debug/java/com/crop/care/ai/ReactNativeFlipper.java` *(deleted)*
 
 ---
 
-## Phase 4 — GCP Deployment ⬜
+## Phase 4 — GCP Deployment ⏸ On Hold
 
-> Detailed plan TBD after Phases 1–3 are complete.
+> Phases 1–3 are complete. Phase 4 is paused and will be resumed in a few days.
 
-Key areas:
-- `gcp/main.py` review and update
-- TF Serving vs direct FastAPI deployment
-- Cloud Run vs GKE
-- Model artifact storage (GCS bucket)
-- CI/CD pipeline
+### Step-by-Step Plan
+
+#### Step 4-1 — Fix crash bug + add CORS + error handling in `gcp/main.py`
+- **Risk:** 🔴 Critical — the function crashes on every request without this fix
+- **Bug:** `img_array = tf.expand_dims(img, 0)` uses undefined variable `img`; should be `image` (the variable set two lines above)
+- **Action:**
+  1. Fix `img` → `image` on the `tf.expand_dims` line
+  2. Add CORS response headers (`Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers`) so the Cloud Function can be called from a browser frontend
+  3. Handle the HTTP preflight (`OPTIONS`) request explicitly
+  4. Wrap the prediction logic in a `try/except` block and return a structured JSON error response on failure
+- **Verify:** Deploy to Cloud Functions and call via `curl` with an image file; confirm JSON response is returned
+
+#### Step 4-2 — Update `gcp/requirements.txt`
+- **Risk:** 🟢 Low
+- **Action:** Add `functions-framework>=3.0` to enable local testing via `functions-framework --target predict`
+- **Current contents:** `tensorflow==2.19.0`, `google-cloud-storage==2.19.0`, `Pillow>=11.0`
+- **Verify:** `functions-framework --target predict` starts without import errors
+
+#### Step 4-3 — Make `api/main.py` deployment-ready
+- **Risk:** 🟡 Medium
+- **Action:**
+  1. Replace hardcoded `../potatoes.keras` model path with `MODEL_PATH` env var (falls back to `../potatoes.keras` for local dev)
+  2. Replace hardcoded `http://localhost:3000` CORS origin with `ALLOWED_ORIGIN` env var (falls back to `localhost:3000`)
+  3. This allows the same `main.py` to run locally and on Cloud Run without code changes, just env var configuration
+- **Verify:** `uvicorn main:app` still works locally; Cloud Run deployment picks up env vars from the service config
+
+#### Step 4-4 — Add `api/Dockerfile`
+- **Risk:** 🟡 Medium — required for Cloud Run deployment
+- **Action:** Create `api/Dockerfile` with:
+  - Base image: `python:3.11-slim`
+  - `WORKDIR /app`
+  - `COPY requirements.txt` + `pip install`
+  - `COPY . .`
+  - `ENV MODEL_PATH` and `ENV ALLOWED_ORIGIN` placeholders
+  - `CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]`
+- **Verify:** `docker build` succeeds; `docker run -p 8080:8080` serves `/ping` and `/predict` correctly
+
+#### Step 4-5 — Final Verification
+- Deploy Cloud Function from `gcp/` and test with a real image
+- Deploy FastAPI server from `api/` to Cloud Run and test end-to-end from the web frontend and mobile app
+- Confirm model is loaded from GCS bucket on first request (not bundled in image)
 
 ---
 
@@ -294,6 +372,24 @@ Key areas:
 - `mobile-app/metro.config.js`
 - `mobile-app/babel.config.js`
 
+### Phase 3
+- `mobile-app/android/settings.gradle`
+- `mobile-app/android/build.gradle`
+- `mobile-app/android/app/build.gradle`
+- `mobile-app/android/gradle.properties`
+- `mobile-app/android/gradle/wrapper/gradle-wrapper.properties`
+- `mobile-app/android/app/src/main/AndroidManifest.xml`
+- `mobile-app/android/app/proguard-rules.pro`
+- `mobile-app/android/app/src/main/java/com/crop/care/ai/MainApplication.java`
+- `mobile-app/android/app/src/main/java/com/crop/care/ai/MainActivity.java`
+- `mobile-app/android/app/src/debug/java/com/crop/care/ai/ReactNativeFlipper.java` *(deleted)*
+
+### Phase 4
+- `gcp/main.py`
+- `gcp/requirements.txt`
+- `api/main.py`
+- `api/Dockerfile` *(new file)*
+
 ---
 
-*Last updated: Phase 1 complete. Phase 2 plan reviewed and approved before implementation begins.*
+*Last updated: Phases 1–3 complete. Phase 4 on hold — resuming in a few days.*
