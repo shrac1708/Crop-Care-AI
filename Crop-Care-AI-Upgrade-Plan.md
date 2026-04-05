@@ -7,8 +7,8 @@ This document tracks the full upgrade of the Crop-Care-AI project across four ph
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 | Python / TensorFlow / Keras / Notebooks | ✅ Complete |
-| 2A | Web Frontend (React + MUI) | 🔄 Pending |
-| 2B | Mobile App (React Native) | 🔄 Pending |
+| 2A | Web Frontend (React + MUI) | ✅ Complete |
+| 2B | Mobile App (React Native) | ✅ Complete |
 | 3 | Android Native Build Layer | ⬜ Not Started |
 | 4 | GCP Deployment | ⬜ Not Started |
 

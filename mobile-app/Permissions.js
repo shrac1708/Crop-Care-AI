@@ -32,7 +32,7 @@ const hasCameraPermission = async (withAlert = true) => {
       : PERMISSIONS.ANDROID.CAMERA;
     const response = await check(permission);
     let camera;
-    if (response.camera !== RESULTS.GRANTED) {
+    if (response !== RESULTS.GRANTED) {
       camera = await request(permission);
     }
     if (camera === RESULTS.DENIED || camera === RESULTS.BLOCKED) {
@@ -54,10 +54,10 @@ const hasPhotoPermission = async (withAlert = true) => {
   try {
     const permission = isIOS
       ? PERMISSIONS.IOS.PHOTO_LIBRARY
-      : PERMISSIONS.ANDROID.WRITE_EXTERNAL_StorageService;
+      : PERMISSIONS.ANDROID.READ_MEDIA_IMAGES;
     const response = await check(permission);
     let photo;
-    if (response.photo !== RESULTS.GRANTED) {
+    if (response !== RESULTS.GRANTED) {
       photo = await request(permission);
     }
     if (photo === RESULTS.DENIED || photo === RESULTS.BLOCKED) {

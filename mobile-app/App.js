@@ -21,10 +21,8 @@ import PermissionsService, {isIOS} from './Permissions';
 axios.interceptors.request.use(
   async config => {
     let request = config;
-    request.headers = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
+    request.headers['Content-Type'] = 'multipart/form-data';
+    request.headers['Accept'] = 'application/json';
     request.url = configureUrl(config.url);
     return request;
   },
@@ -48,8 +46,6 @@ export const fonts = {
 const options = {
   mediaType: 'photo',
   quality: 1,
-  width: 256,
-  height: 256,
   includeBase64: true,
 };
 
