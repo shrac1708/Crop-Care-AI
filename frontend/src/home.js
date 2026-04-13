@@ -209,13 +209,17 @@ export const ImageUpload = () => {
                     <Table sx={{ backgroundColor: 'transparent' }} size="small" aria-label="simple table">
                       <TableHead sx={{ backgroundColor: 'transparent' }}>
                         <TableRow sx={{ backgroundColor: 'transparent' }}>
-                          <TableCell sx={tableCell1Sx}>Label:</TableCell>
+                          <TableCell sx={tableCell1Sx}>Crop:</TableCell>
+                          <TableCell align="right" sx={tableCell1Sx}>Label:</TableCell>
                           <TableCell align="right" sx={tableCell1Sx}>Confidence:</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody sx={{ backgroundColor: 'transparent' }}>
                         <TableRow sx={{ backgroundColor: 'transparent' }}>
-                          <TableCell component="th" scope="row" sx={tableCellSx}>
+                          <TableCell component="th" scope="row" sx={{...tableCellSx, textTransform: 'capitalize'}}>
+                            {data.crop}
+                          </TableCell>
+                          <TableCell align="right" sx={tableCellSx}>
                             {data.class}
                           </TableCell>
                           <TableCell align="right" sx={tableCellSx}>{confidence}%</TableCell>

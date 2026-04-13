@@ -52,6 +52,7 @@ const options = {
 const App = () => {
   const [result, setResult] = useState('');
   const [label, setLabel] = useState('');
+  const [crop, setCrop] = useState('');
   const isDarkMode = useColorScheme() === 'dark';
   const [image, setImage] = useState('');
   const backgroundStyle = {
@@ -110,6 +111,7 @@ const App = () => {
   const clearOutput = () => {
     setResult('');
     setImage('');
+    setCrop('');
   };
 
   const getResult = async (path, response) => {
@@ -125,6 +127,7 @@ const App = () => {
       const res = await getPredication(params);
       if (res?.data?.class) {
         setLabel(res.data.class);
+        setCrop(res.data.crop || '');
         setResult(res.data.confidence * 100);
       } else {
         setLabel('Failed to predict');
@@ -162,12 +165,17 @@ const App = () => {
       <TouchableOpacity onPress={clearOutput} style={styles.clearStyle}>
         <Image source={{uri: 'clean'}} style={styles.clearImage} />
       </TouchableOpacity>
+
       {(image?.length && (
         <Image source={{uri: image}} style={styles.imageStyle} />
       )) ||
         null}
       {(result && label && (
         <View style={styles.mainOuter}>
+          <Text style={[styles.space, styles.labelText]}>
+            {'Crop: \n'}
+            <Text style={[styles.resultText, {textTransform: 'capitalize'}]}>{crop}</Text>
+          </Text>
           <Text style={[styles.space, styles.labelText]}>
             {'Label: \n'}
             <Text style={styles.resultText}>{label}</Text>
